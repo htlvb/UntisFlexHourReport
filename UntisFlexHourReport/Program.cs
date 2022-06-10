@@ -11,7 +11,7 @@ try
     string inputPath = Console.ReadLine()?.Trim('"') ?? "";
     List<Teacher> teacherList = ReadUntisReport(inputPath);
     string outputPath = $"{Path.GetFileNameWithoutExtension(inputPath)}_mit_Auswertung{Path.GetExtension(inputPath)}";
-    string fullOutputPath = Path.Combine(Path.GetDirectoryName(inputPath), outputPath);
+    string fullOutputPath = Path.Combine(Path.GetDirectoryName(inputPath)!, outputPath);
     File.Copy(inputPath, fullOutputPath, overwrite: true);
     AddUntisReportSummary(fullOutputPath, teacherList);
     Process.Start(new ProcessStartInfo(fullOutputPath) { UseShellExecute = true });
