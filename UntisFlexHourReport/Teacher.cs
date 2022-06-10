@@ -1,4 +1,4 @@
-﻿namespace Stundenanalyse
+﻿namespace UntisFlexHourReport
 {
     public class Teacher
     {
