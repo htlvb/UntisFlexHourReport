@@ -56,9 +56,6 @@ jobs:
       with:
         fetch-depth: 0
         
-    - name: GitVersion action
-      uses: nmcc/actions-gitversion@v1
-
     - name: Install .NET Core
       uses: actions/setup-dotnet@v2
       with:
