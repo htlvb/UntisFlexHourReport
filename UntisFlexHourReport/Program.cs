@@ -1,7 +1,6 @@
 ﻿using ClosedXML.Excel;
 using UntisFlexHourReport;
 using System.Diagnostics;
-using System.Globalization;
 
 Console.WriteLine("== BAUEs Untis-Auswertung ==");
 
@@ -9,10 +8,10 @@ try
 {
     Console.Write("Pfad zum Untis-Bericht: ");
     string inputPath = Console.ReadLine()?.Trim('"') ?? "";
-    List<Teacher> teacherList = ReadUntisReport(inputPath);
     string outputPath = $"{Path.GetFileNameWithoutExtension(inputPath)}_mit_Auswertung{Path.GetExtension(inputPath)}";
     string fullOutputPath = Path.Combine(Path.GetDirectoryName(inputPath)!, outputPath);
     File.Copy(inputPath, fullOutputPath, overwrite: true);
+    List<Teacher> teacherList = ReadUntisReport(fullOutputPath);
     AddUntisReportSummary(fullOutputPath, teacherList);
     Process.Start(new ProcessStartInfo(fullOutputPath) { UseShellExecute = true });
 }
@@ -37,25 +36,23 @@ static List<Teacher> ReadUntisReport(string path)
     var ws = wb.Worksheet(1);
 
     List<Teacher> teacherList = new();
-    var row = 1;
-    while (row < ws.LastRowUsed().RowNumber())
+    var startRow = ws.FirstRow();
+    while (startRow.RowNumber() < ws.LastRowUsed().RowNumber())
     {
-        while (!IsTeacherShortName(ws.Row(row).Cell(1).GetString()))
-        {
-            row++;
-        }
-        var firstName = ws.Row(row).Cell(4).GetString();
-        var lastName = ws.Row(row).Cell(2).GetString();
-        var shortName = ws.Row(row).Cell(1).GetString();
+        var teacherNameRow = FindNextTeacherRow(startRow);
+        var shortName = teacherNameRow.Cell(1).GetString();
+        var firstName = teacherNameRow.Cell(4).GetString();
+        var lastName = teacherNameRow.Cell(2).GetString();
+
         var actualHours = 0m;
-        row += 3;
-        var actualHourCell = ws.Row(row).Cells(c => c.GetString().Equals("Realstunden", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+        var tableHeaderRow = teacherNameRow.RowBelow(3);
+        var actualHourCell = tableHeaderRow.Cells(c => c.GetString().Equals("Realstunden", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
         if (actualHourCell == null)
         {
             throw new Exception($"Can't find cell \"Realstunden\" for teacher {shortName}");
         }
 
-        var fUpisCell = ws.Row(row).Cells(c => c.GetString().Equals("F-Upis", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+        var fUpisCell = tableHeaderRow.Cells(c => c.GetString().Equals("F-Upis", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
         if (fUpisCell == null)
         {
             throw new Exception($"Can't find cell \"F-Upis\" for teacher {shortName}");
@@ -65,21 +62,40 @@ static List<Teacher> ReadUntisReport(string path)
         fUpisCell = fUpisCell.CellBelow();
         while (!actualHourCell.IsEmpty())
         {
-            if (!fUpisCell.GetString().Equals("R", StringComparison.InvariantCultureIgnoreCase))
+            if (IsLessonIdentifier(fUpisCell.GetString()))
             {
-                actualHours += decimal.Parse(actualHourCell.GetString(), CultureInfo.InvariantCulture);
+                actualHours += decimal.Parse(actualHourCell.GetString());
             }
             actualHourCell = actualHourCell.CellBelow();
             fUpisCell = fUpisCell.CellBelow();
         }
-        teacherList.Add(new Teacher(shortName, firstName, lastName, actualHours));
+        var teacher = new Teacher(shortName, firstName, lastName, actualHours);
+        teacherList.Add(teacher);
 
-        row = actualHourCell.Address.RowNumber + 4;
+        startRow = actualHourCell.WorksheetRow().RowBelow(4);
     }
 
     return teacherList;
-}
 
+    static IXLRow FindNextTeacherRow(IXLRow row)
+    {
+        while (!IsTeacherShortName(row.Cell(1).GetString()))
+        {
+            row = row.RowBelow();
+        }
+        return row;
+    }
+
+    static bool IsTeacherShortName(string value)
+    {
+        return value.Length == 4 && value.All(c => char.IsUpper(c));
+    }
+
+    static bool IsLessonIdentifier(string text)
+    {
+        return !text.Equals("R", StringComparison.InvariantCultureIgnoreCase);
+    }
+}
 
 static void AddUntisReportSummary(string path, List<Teacher> teacherList)
 {
@@ -170,9 +186,4 @@ static void AddUntisReportSummary(string path, List<Teacher> teacherList)
     ws.Columns().AdjustToContents();
 
     wb.Save();
-}
-
-static bool IsTeacherShortName(string value)
-{
-    return value.Length == 4 && value.All(c => char.IsUpper(c));
 }
