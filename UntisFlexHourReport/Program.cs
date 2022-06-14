@@ -1,6 +1,7 @@
 ﻿using ClosedXML.Excel;
 using UntisFlexHourReport;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 Console.WriteLine("== BAUEs Untis-Auswertung ==");
 
@@ -58,16 +59,24 @@ static List<Teacher> ReadUntisReport(string path)
             throw new Exception($"Can't find cell \"F-Upis\" for teacher {shortName}");
         }
 
+        var classCell = tableHeaderRow.Cells(c => c.GetString().Equals("Klasse(n)", StringComparison.InvariantCultureIgnoreCase)).FirstOrDefault();
+        if (classCell == null)
+        {
+            throw new Exception($"Can't find cell \"Klasse(n)\" for teacher {shortName}");
+        }
+
         actualHourCell = actualHourCell.CellBelow();
         fUpisCell = fUpisCell.CellBelow();
+        classCell = classCell.CellBelow();
         while (!actualHourCell.IsEmpty())
         {
-            if (IsLessonIdentifier(fUpisCell.GetString()))
+            if (IsLessonIdentifier(fUpisCell.GetString()) && AreDaySchoolClasses(classCell.GetString()))
             {
                 actualHours += decimal.Parse(actualHourCell.GetString());
             }
             actualHourCell = actualHourCell.CellBelow();
             fUpisCell = fUpisCell.CellBelow();
+            classCell = classCell.CellBelow();
         }
         var teacher = new Teacher(shortName, firstName, lastName, actualHours);
         teacherList.Add(teacher);
@@ -94,6 +103,23 @@ static List<Teacher> ReadUntisReport(string path)
     static bool IsLessonIdentifier(string text)
     {
         return !text.Equals("R", StringComparison.InvariantCultureIgnoreCase);
+    }
+    
+    static bool AreDaySchoolClasses(string text)
+    {
+        var classes = text.Split(',');
+        if (classes.Any(IsDaySchoolClass) && !classes.All(IsDaySchoolClass))
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"WARNING: Mixed day and night school lessons ({text}).");
+            Console.ResetColor();
+        }
+        return classes.All(IsDaySchoolClass);
+    }
+
+    static bool IsDaySchoolClass(string text)
+    {
+        return Regex.IsMatch(text, @"^\d+[A-Z](H|F)");
     }
 }
 
