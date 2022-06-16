@@ -128,42 +128,44 @@ static void AddUntisReportSummary(string path, List<Teacher> teacherList)
     using var wb = new XLWorkbook(path);
     var ws = wb.AddWorksheet("Auswertung");
 
-    var headerRow = ws.Row(1);
-    headerRow.Cell(1).Value = "Kürzel";
-    headerRow.Cell(2).Value = "Vorname";
-    headerRow.Cell(3).Value = "Nachname";
-    headerRow.Cell(4).Value = "Realstunden";
-    headerRow.Cell(5).Value = "Flexminuten/Woche";
-    headerRow.Cell(6).Value = "Flexstunden/Woche";
-    headerRow.Cell(7).Value = "Flexstunden/Jahr";
-    headerRow.Cell(8).Value = "Anzahl Wochen Zeitraum 1";
-    headerRow.Cell(9).Value = "Flexstunden pro Woche im Zeitraum 1";
-    headerRow.Cell(10).Value = "Anzahl Wochen Zeitraum 2";
-    headerRow.Cell(11).Value = "Flexstunden pro Woche im Zeitraum 2";
-    headerRow.Cell(12).Value = "Soll-/Istvergleich der Flexstunden pro Jahr";
+    var firstHeaderCell = ws.Row(1).Cell(1);
+    var lastHeaderCell = firstHeaderCell.SetValue("Kürzel")
+        .CellRight().SetValue("Vorname")
+        .CellRight().SetValue("Nachname")
+        .CellRight().SetValue("Realstunden")
+        .CellRight().SetValue("Flexminuten/Woche")
+        .CellRight().SetValue("Flexstunden/Woche")
+        .CellRight().SetValue("Flexstunden/Jahr")
+        .CellRight().SetValue("Anzahl Wochen Zeitraum 1")
+        .CellRight().SetValue("Flexstunden pro Woche im Zeitraum 1")
+        .CellRight().SetValue("Anzahl Wochen Zeitraum 2")
+        .CellRight().SetValue("Flexstunden pro Woche im Zeitraum 2")
+        .CellRight().SetValue("Soll-/Istvergleich der Flexstunden pro Jahr");
 
-    var minuteReduction = ws.Row(1).Cell(15);
-    minuteReduction.CellLeft().Value = "Minutenreduktion";
-    var minuteReductionAddress = minuteReduction.Address.ToStringFixed();
-    minuteReduction.Value = 7;
+    var settingsStartCell = lastHeaderCell.CellRight(2);
 
-    var hourDuration = ws.Row(2).Cell(15);
-    hourDuration.CellLeft().Value = "Stundendauer";
-    var hourDurationAddress = hourDuration.Address.ToStringFixed();
-    hourDuration.Value = 43;
+    var minuteReductionAddress =
+        settingsStartCell.SetValue("Minutenreduktion")
+            .CellRight().SetValue(7)
+            .Address;
 
-    var weekCount = ws.Row(3).Cell(15);
-    weekCount.CellLeft().Value = "Wochenanzahl";
-    var weekCountAddress = weekCount.Address.ToStringFixed();
-    weekCount.Value = 43;
+    var hourDurationAddress =
+        settingsStartCell.CellBelow().SetValue("Stundendauer")
+            .CellRight().SetValue(43)
+            .Address;
+
+    var weekCountAddress =
+        settingsStartCell.CellBelow(2).SetValue("Wochenanzahl")
+            .CellRight().SetValue(43)
+            .Address;
 
     for (int i = 0; i < teacherList.Count; i++)
     {
         var row = ws.Row(i + 2);
 
-        row.Cell(1).Value = teacherList[i].NameCode;
-        row.Cell(2).Value = teacherList[i].FirstName;
-        row.Cell(3).Value = teacherList[i].LastName;
+        row.Cell(1).SetValue(teacherList[i].NameCode)
+            .CellRight().SetValue(teacherList[i].FirstName)
+            .CellRight().SetValue(teacherList[i].LastName);
 
         var actualHours = row.Cell(4);
         var actualHoursAddress = actualHours.Address.ToStringRelative();
@@ -204,7 +206,7 @@ static void AddUntisReportSummary(string path, List<Teacher> teacherList)
     var table = ws.Range($"A1:L{teacherList.Count + 1}").CreateTable();
     var firstTableRow = table.DataRange.FirstCell().Address.RowNumber;
     var lastTableRow = table.DataRange.LastCell().Address.RowNumber;
-            
+
     ws.Range($"D{firstTableRow}:G{lastTableRow}").Style.NumberFormat.Format = "0.00";
     ws.Range($"H{firstTableRow}:K{lastTableRow}").Style.NumberFormat.Format = "0";
     ws.Range($"L{firstTableRow}:L{lastTableRow}").Style.NumberFormat.Format = "0.00";
